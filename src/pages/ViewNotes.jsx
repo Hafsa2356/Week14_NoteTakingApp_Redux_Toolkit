@@ -1,23 +1,24 @@
+
 import { useState, useEffect } from "react";
 import NoteCard from "../components/NoteCard";
-
-import { StickyNote, Trash2 } from "lucide-react";
-import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchNotes } from "../store/notes/notesSlice";
+import { StickyNote } from "lucide-react";
 import { Link } from "react-router-dom";
-const ViewNotes = () => {
-  const [notes, setNotes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+function ViewNotes() {
+  const dispatch = useDispatch();
+  const { notes = [], error, status } = useSelector((state) => state.notes);
+  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState(null);
 
   const loadNotes = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://localhost:3001/api/notes");
-      setNotes(response.data);
-      setError(null);
+      await dispatch(fetchNotes()).unwrap();
+      setLocalError(null);
     } catch (err) {
-      console.error("Error fetching notes:", err);
-      setError("Failed to load notes. Please try again.");
+      setLocalError("Failed to load notes. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -25,36 +26,13 @@ const ViewNotes = () => {
 
   useEffect(() => {
     loadNotes();
+    // eslint-disable-next-line
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this note?")) {
-      return;
-    }
-
-    try {
-      await axios.delete(`http://localhost:3001/api/notes/${id}`);
-      setNotes(notes.filter((note) => note.id !== id));
-    } catch (err) {
-      console.error("Error deleting note:", err);
-      alert("Failed to delete note. Please try again.");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-pulse text-yellow-500">
-          <StickyNote size={48} />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
+  if (error || localError) {
     return (
       <div className="text-center py-10">
-        <p className="text-red-500 mb-4">{error}</p>
+        <p className="text-red-500 mb-4">{error || localError}</p>
         <button
           onClick={loadNotes}
           className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
@@ -65,7 +43,7 @@ const ViewNotes = () => {
     );
   }
 
-  if (notes.length === 0) {
+  if (!notes || notes.length === 0) {
     return (
       <div className="text-center py-16">
         <div className="flex justify-center mb-4 text-yellow-400">
@@ -86,8 +64,8 @@ const ViewNotes = () => {
       </div>
     );
   }
-
-  return (
+    
+    return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Your Notes</h1>
@@ -95,14 +73,11 @@ const ViewNotes = () => {
           {notes.length} {notes.length === 1 ? "note" : "notes"} stored
         </p>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {notes.map((note) => (
-          <NoteCard key={note.id} note={note} onDelete={handleDelete} />
+          <NoteCard key={note.id} note={note} />
         ))}
-      </div>
     </div>
   );
-};
+}
 
 export default ViewNotes;
